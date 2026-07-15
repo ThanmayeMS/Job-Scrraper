@@ -1,0 +1,66 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: jobradar
+      POSTGRES_PASSWORD: jobradar
+      POSTGRES_DB: jobradar
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jobradar"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://jobradar:jobradar@db:5432/jobradar
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    ports:
+      - "8000:8000"
+    # Apply migrations, then serve.
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn jobradar.main:app --host 0.0.0.0 --port 8000"
+
+  worker:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://jobradar:jobradar@db:5432/jobradar
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    command: celery -A jobradar.workers.celery_app.celery_app worker --loglevel=info
+
+  beat:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://jobradar:jobradar@db:5432/jobradar
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - redis
+    command: celery -A jobradar.workers.celery_app.celery_app beat --loglevel=info
+
+volumes:
+  pgdata:

@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff
+      - run: ruff check .
+      - run: ruff format --check .
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: jobradar
+          POSTGRES_PASSWORD: jobradar
+          POSTGRES_DB: jobradar_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U jobradar"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://jobradar:jobradar@localhost:5432/jobradar_test
+      JWT_SECRET_KEY: test-secret
+      OPENAI_API_KEY: test-key
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - run: alembic upgrade head
+      - run: pytest --cov=jobradar
