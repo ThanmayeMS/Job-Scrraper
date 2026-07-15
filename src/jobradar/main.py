@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from jobradar.api.routers import admin, auth, cv, health, jobs, matches
+from jobradar.bootstrap import bootstrap_initial_data
 from jobradar.config import settings
 from jobradar.logging_config import configure_logging
 
@@ -22,6 +23,7 @@ def _frontend_dir() -> Path | None:
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     configure_logging("DEBUG" if settings.debug else "INFO")
+    bootstrap_initial_data()
     yield
 
 

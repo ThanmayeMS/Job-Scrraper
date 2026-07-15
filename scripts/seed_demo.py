@@ -7,26 +7,10 @@ Admin login:  admin@jobradar.dev / adminadmin  (change before any real deploymen
 
 from sqlalchemy import select
 
+from jobradar.bootstrap import DEMO_JOBS
 from jobradar.core.security import hash_password
 from jobradar.db.base import SessionLocal
 from jobradar.db.models import Job, User
-
-DEMO_JOBS = [
-    {
-        "apply_url": "https://example.com/jobs/de-1",
-        "company": "Amazon",
-        "title": "Data Engineer, Analytics",
-        "locations": "Bengaluru, India",
-        "about_the_job": "Build and own ETL pipelines and data infrastructure for analytics.",
-    },
-    {
-        "apply_url": "https://example.com/jobs/ba-2",
-        "company": "Google",
-        "title": "Business Intelligence Analyst",
-        "locations": "Hyderabad, India",
-        "about_the_job": "Design KPI dashboards and reporting for leadership decisions.",
-    },
-]
 
 
 def main() -> None:

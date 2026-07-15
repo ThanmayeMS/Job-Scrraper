@@ -158,20 +158,31 @@ tests/               pytest suite
 
 The dashboard is served by the API at `/`, so the whole product is one deployable unit.
 
-**Free, resume-friendly (Render web + Neon Postgres, no Redis):**
-1. Create a free Postgres at neon.com (includes pgvector, no card, persists). Copy its connection string.
-2. Push this repo to GitHub. On render.com → *New → Web Service* → connect the repo (Docker runtime is auto-detected).
-3. Set env vars: `DATABASE_URL` = the Neon string; `ENVIRONMENT=production`; `RUN_TASKS_INLINE=true` (runs scraping/matching in the web process — no Redis/worker needed); `JWT_SECRET_KEY` = any long random string; `PORTKEY_API_KEY` + `PORTKEY_VIRTUAL_KEY` (or `OPENAI_API_KEY`); `CORS_ORIGINS` = your Render URL.
-4. Deploy. Migrations run automatically on start; the site goes live at the Render URL.
-5. Seed data once from Render's Shell: `python scripts/seed_demo.py` (creates admin `admin@jobradar.dev` / `adminadmin` + sample jobs), then log in as admin → Admin tab → scrape `amazon`.
+**Free, resume-friendly (Render Free web + Neon Free Postgres, no Redis):**
+1. Create a free Postgres project at neon.com and copy the pooled connection string.
+2. In Neon's SQL editor, run `CREATE EXTENSION IF NOT EXISTS vector;`.
+3. Push this repo to GitHub. On render.com, create a **Blueprint** from this repo, or create
+   a **Web Service** manually. The checked-in `render.yaml` is intentionally free-only.
+4. Set env vars:
+   `DATABASE_URL` = the Neon pooled connection string;
+   `ENVIRONMENT=production`;
+   `RUN_TASKS_INLINE=true`;
+   `JWT_SECRET_KEY` = a long random string;
+   `ADMIN_EMAIL` + `ADMIN_PASSWORD` = your first admin login;
+   `SEED_DEMO_DATA=true` for two harmless sample jobs;
+   `PORTKEY_API_KEY` + `PORTKEY_VIRTUAL_KEY` or `OPENAI_API_KEY`;
+   `CORS_ORIGINS=*` for first deploy, then replace it with your Render URL.
+5. Deploy. The service runs `alembic upgrade head`, then starts FastAPI on Render's `$PORT`.
+6. Open `/health` and `/health/db`, log in with `ADMIN_EMAIL`, then use Admin → scrape
+   `amazon`, Admin → embed, upload a CV, and run matching.
 
-Render's free web service sleeps after ~15 min idle (first request ~1 min cold start); Neon's free Postgres persists — Render's own free DB expires after 30 days, which is why the DB lives on Neon.
+Render's Free web service sleeps after idle time and wakes on the next request. Neon's free
+database is a better fit here than Render's Free Postgres because Render's Free Postgres
+expires after 30 days.
 
-**Render (full blueprint, with workers):** push this repo to GitHub, then in Render choose *New → Blueprint*
-and point it at the repo. `render.yaml` provisions Postgres (with pgvector), Redis, the
-API (serves the dashboard), and the Celery worker + beat. Set `PORTKEY_API_KEY` /
-`PORTKEY_VIRTUAL_KEY` (or `OPENAI_API_KEY`) in the dashboard, and set `CORS_ORIGINS` to
-your site URL. Migrations run automatically on deploy.
+**Paid/full stack later:** run the same Docker image with Redis plus a Celery worker and beat:
+`celery -A jobradar.workers.celery_app.celery_app worker` and
+`celery -A jobradar.workers.celery_app.celery_app beat`.
 
 **Any Docker host:** the app is a standard container. Run the API with
 `alembic upgrade head && uvicorn jobradar.main:app --host 0.0.0.0 --port $PORT`, plus a

@@ -23,6 +23,7 @@ WORKDIR /app
 COPY --from=builder /wheels /wheels
 COPY pyproject.toml README.md ./
 COPY src ./src
+COPY scripts ./scripts
 COPY migrations ./migrations
 COPY alembic.ini ./
 COPY frontend ./frontend

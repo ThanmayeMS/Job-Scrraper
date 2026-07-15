@@ -1,95 +1,44 @@
-# Render Blueprint — one-file infrastructure for the whole product.
-# In Render: New > Blueprint > point at this repo. It provisions Postgres (with
-# pgvector), Redis, the API (which serves the dashboard at /), and Celery worker + beat.
+# Free Render blueprint for JobRadar.
 #
-# NOTE: managed-host plans and service types change over time. This is a working
-# starting point — adjust plans in the Render dashboard as needed. Background
-# workers require a paid instance type on Render; see README for a cheaper path.
+# This intentionally deploys only one Free web service. Background workers are not
+# free on Render, so set RUN_TASKS_INLINE=true and use Neon/Supabase Postgres.
+# The service runs Alembic migrations before starting FastAPI.
 
-databases:
-  - name: jobradar-db
-    databaseName: jobradar
-    user: jobradar
+services:
+  - type: web
+    name: jobradar
+    runtime: docker
     plan: free
-    postgresMajorVersion: "16"
-
-envVarGroups:
-  - name: jobradar-shared
+    healthCheckPath: /health
+    dockerCommand: sh -c "alembic upgrade head && uvicorn jobradar.main:app --host 0.0.0.0 --port $PORT"
     envVars:
-      # Secrets — set these in the Render dashboard (sync:false = not stored in git).
-      - key: PORTKEY_API_KEY
+      - key: DATABASE_URL
         sync: false
-      - key: PORTKEY_VIRTUAL_KEY
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: ENVIRONMENT
+        value: production
+      - key: RUN_TASKS_INLINE
+        value: "true"
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: ADMIN_EMAIL
         sync: false
-      - key: OPENAI_API_KEY
+      - key: ADMIN_PASSWORD
         sync: false
+      - key: ADMIN_FULL_NAME
+        value: JobRadar Admin
+      - key: SEED_DEMO_DATA
+        value: "true"
       - key: SCORING_MODEL
         value: gpt-4o-mini
       - key: EMBEDDING_MODEL
         value: text-embedding-3-small
       - key: EMBEDDING_DIM
         value: "1536"
-      - key: ENVIRONMENT
-        value: production
-
-services:
-  - type: redis
-    name: jobradar-redis
-    plan: free
-    ipAllowList: []          # internal-only
-
-  - type: web
-    name: jobradar-api
-    runtime: docker
-    plan: starter
-    healthCheckPath: /health
-    dockerCommand: sh -c "alembic upgrade head && uvicorn jobradar.main:app --host 0.0.0.0 --port $PORT"
-    envVars:
-      - fromGroup: jobradar-shared
-      - key: DATABASE_URL
-        fromDatabase:
-          name: jobradar-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: jobradar-redis
-          property: connectionString
-      - key: JWT_SECRET_KEY
-        generateValue: true
-      - key: CORS_ORIGINS
-        value: "*"
-
-  - type: worker
-    name: jobradar-worker
-    runtime: docker
-    plan: starter
-    dockerCommand: celery -A jobradar.workers.celery_app.celery_app worker --loglevel=info
-    envVars:
-      - fromGroup: jobradar-shared
-      - key: DATABASE_URL
-        fromDatabase:
-          name: jobradar-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: jobradar-redis
-          property: connectionString
-
-  - type: worker
-    name: jobradar-beat
-    runtime: docker
-    plan: starter
-    dockerCommand: celery -A jobradar.workers.celery_app.celery_app beat --loglevel=info
-    envVars:
-      - fromGroup: jobradar-shared
-      - key: DATABASE_URL
-        fromDatabase:
-          name: jobradar-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: jobradar-redis
-          property: connectionString
+      - key: PORTKEY_API_KEY
+        sync: false
+      - key: PORTKEY_VIRTUAL_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false

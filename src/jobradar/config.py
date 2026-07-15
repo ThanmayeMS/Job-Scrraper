@@ -55,6 +55,12 @@ class Settings(BaseSettings):
     # Set true to run scraping/matching inside the web process (no Redis/worker needed).
     run_tasks_inline: bool | None = None
 
+    # Optional first-run bootstrap for no-shell hosts (for example Render Free).
+    admin_email: str = ""
+    admin_password: str = ""
+    admin_full_name: str = "JobRadar Admin"
+    seed_demo_data: bool = False
+
     @field_validator("database_url", mode="before")
     @classmethod
     def _normalize_db_url(cls, v: str) -> str:
