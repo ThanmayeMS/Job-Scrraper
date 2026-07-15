@@ -11,6 +11,7 @@ import pdfplumber
 from openai import OpenAI
 
 from jobradar.config import settings
+from jobradar.services.free_fallback import ai_credentials_configured, build_local_work_profile
 from jobradar.services.llm import get_client
 
 log = logging.getLogger(__name__)
@@ -43,6 +44,9 @@ def extract_pdf_text(data: bytes) -> str:
 
 
 def build_work_profile(resume_text: str, client: OpenAI | None = None) -> str:
+    if client is None and not ai_credentials_configured():
+        return build_local_work_profile(resume_text)
+
     client = client or get_client()
     resp = client.chat.completions.create(
         model=settings.scoring_model,

@@ -12,18 +12,25 @@ from sqlalchemy.orm import Session
 
 from jobradar.config import settings
 from jobradar.db.models import Job
+from jobradar.services.free_fallback import ai_credentials_configured, local_embedding
 from jobradar.services.llm import get_client
 
 log = logging.getLogger(__name__)
 
 
 def embed_text(text: str, client: OpenAI | None = None) -> list[float]:
+    if client is None and not ai_credentials_configured():
+        return local_embedding(text)
+
     client = client or get_client()
     resp = client.embeddings.create(model=settings.embedding_model, input=text[:8000])
     return resp.data[0].embedding
 
 
 def embed_texts(texts: list[str], client: OpenAI | None = None) -> list[list[float]]:
+    if client is None and not ai_credentials_configured():
+        return [local_embedding(text) for text in texts]
+
     client = client or get_client()
     resp = client.embeddings.create(model=settings.embedding_model, input=texts)
     return [d.embedding for d in sorted(resp.data, key=lambda d: d.index)]

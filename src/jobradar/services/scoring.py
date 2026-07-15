@@ -6,6 +6,7 @@ import logging
 from openai import OpenAI
 
 from jobradar.config import settings
+from jobradar.services.free_fallback import ai_credentials_configured, score_by_keyword_overlap
 from jobradar.services.llm import get_client
 
 log = logging.getLogger(__name__)
@@ -73,7 +74,6 @@ def extract_job_text(raw: dict, max_chars: int = 4000) -> str:
 
 
 def score_job(resume_text: str, raw: dict, client: OpenAI | None = None) -> dict:
-    client = client or get_client()
     job_text = extract_job_text(raw)
     if not job_text.strip():
         return {
@@ -83,6 +83,11 @@ def score_job(resume_text: str, raw: dict, client: OpenAI | None = None) -> dict
             "gaps": "N/A",
             "info_level": "Insufficient",
         }
+
+    if client is None and not ai_credentials_configured():
+        return score_by_keyword_overlap(resume_text, job_text)
+
+    client = client or get_client()
     prompt = PROMPT_TEMPLATE.format(resume=resume_text.strip(), job_text=job_text)
     response = client.chat.completions.create(
         model=settings.scoring_model,
