@@ -1,0 +1,14 @@
+# Environment variables
+.env
+
+# Python
+__pycache__/
+*.pyc
+
+# Generated data
+*.bak
+*.npy
+
+jobs_db.json
+jobs_recent.json
+jobs_daily_log.json

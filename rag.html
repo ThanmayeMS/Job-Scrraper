@@ -1,0 +1,1457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JobRadar — AI Chat</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#080810;--surface:#0d0d1a;--surface2:#131325;--surface3:#1a1a2e;
+  --border:#1e1e35;--border2:#2a2a45;
+  --accent:#7effd4;--accent2:#9b8dff;--accent3:#ff7eb3;--gold:#ffd166;
+  --red:#ff6b6b;--text:#eeeef8;--muted:#5a5a82;--muted2:#8888b0;
+  --user-bg:#13132a;--ai-bg:#0d0d1a;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'DM Mono',monospace;
+  display:flex;flex-direction:column;
+}
+
+/* Ambient */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse 55% 45% at 15% 15%,rgba(126,255,212,.04) 0%,transparent 65%),
+    radial-gradient(ellipse 45% 55% at 85% 85%,rgba(155,141,255,.05) 0%,transparent 65%),
+    linear-gradient(rgba(26,26,46,.5) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(26,26,46,.5) 1px,transparent 1px);
+  background-size:100% 100%,100% 100%,44px 44px,44px 44px;
+}
+
+/* ── Header ── */
+.header{
+  position:relative;z-index:10;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 20px;border-bottom:1px solid var(--border);
+  background:rgba(8,8,16,.85);backdrop-filter:blur(12px);
+  flex-shrink:0;gap:12px;flex-wrap:wrap;
+}
+.logo{
+  font-family:'Syne',sans-serif;font-weight:800;font-size:1rem;
+  letter-spacing:.07em;color:var(--accent);display:flex;align-items:center;gap:7px;
+}
+.logo-pulse{
+  width:7px;height:7px;border-radius:50%;background:var(--accent);
+  animation:pulse 2.5s ease infinite;
+}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.4;transform:scale(.8);}}
+.logo span{color:var(--muted2);}
+.header-center{
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+}
+.header-title{
+  font-family:'Instrument Serif',serif;font-style:italic;
+  font-size:.95rem;color:var(--text);
+}
+.header-sub{font-size:.54rem;color:var(--muted2);letter-spacing:.1em;text-transform:uppercase;}
+.header-right{display:flex;gap:8px;align-items:center;}
+.db-status{
+  font-size:.56rem;color:var(--muted2);
+  border:1px solid var(--border2);padding:4px 10px;
+  display:flex;align-items:center;gap:5px;
+}
+.db-dot{width:6px;height:6px;border-radius:50%;background:var(--muted);flex-shrink:0;}
+.db-dot.loaded{background:var(--accent);box-shadow:0 0 6px var(--accent);}
+.hbtn{
+  font-family:'DM Mono',monospace;font-size:.56rem;letter-spacing:.08em;
+  text-transform:uppercase;padding:5px 12px;background:transparent;
+  border:1px solid var(--border2);color:var(--muted2);cursor:pointer;
+  transition:all .2s;
+}
+.hbtn:hover{color:var(--text);border-color:var(--muted2);}
+.hbtn.danger:hover{color:var(--red);border-color:rgba(255,107,107,.3);}
+
+/* ── Setup panel ── */
+.setup{
+  position:relative;z-index:5;
+  display:flex;gap:10px;padding:12px 20px;
+  border-bottom:1px solid var(--border);
+  background:rgba(13,13,26,.7);flex-shrink:0;flex-wrap:wrap;
+  align-items:center;
+}
+.setup-label{font-size:.56rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.1em;white-space:nowrap;}
+.setup-input{
+  flex:1;min-width:140px;background:var(--surface2);
+  border:1px solid var(--border2);color:var(--text);
+  font-family:'DM Mono',monospace;font-size:.62rem;
+  padding:6px 10px;outline:none;transition:border-color .2s;
+}
+.setup-input:focus{border-color:var(--accent2);}
+.setup-input::placeholder{color:var(--muted);}
+.setup-input[type=password]{letter-spacing:.15em;}
+.setup-file{
+  font-family:'DM Mono',monospace;font-size:.58rem;padding:6px 14px;
+  border:1px solid var(--border2);color:var(--muted2);background:transparent;
+  cursor:pointer;transition:all .2s;white-space:nowrap;
+}
+.setup-file:hover,.setup-file.loaded{border-color:var(--accent);color:var(--accent);}
+.setup-divider{width:1px;height:24px;background:var(--border2);flex-shrink:0;}
+
+/* ── Stats bar ── */
+.stats-bar{
+  position:relative;z-index:5;
+  display:flex;gap:1px;background:var(--border);
+  border-bottom:1px solid var(--border);flex-shrink:0;
+  overflow-x:auto;
+}
+.stat{background:var(--surface);padding:7px 16px;display:flex;align-items:center;gap:8px;white-space:nowrap;}
+.stat-n{font-family:'Syne',sans-serif;font-weight:800;font-size:.85rem;}
+.stat-l{font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);}
+
+/* ── Suggested prompts ── */
+.suggestions{
+  position:relative;z-index:5;
+  display:flex;gap:6px;padding:10px 20px;
+  border-bottom:1px solid var(--border);
+  background:rgba(8,8,16,.6);flex-shrink:0;
+  overflow-x:auto;flex-wrap:nowrap;
+}
+.suggestions::-webkit-scrollbar{height:3px;}
+.suggestions::-webkit-scrollbar-thumb{background:var(--border2);}
+.sug{
+  font-family:'DM Mono',monospace;font-size:.56rem;
+  padding:5px 12px;border:1px solid var(--border2);
+  color:var(--muted2);background:transparent;cursor:pointer;
+  transition:all .15s;white-space:nowrap;flex-shrink:0;
+}
+.sug:hover{border-color:var(--accent);color:var(--accent);background:rgba(126,255,212,.04);}
+
+/* ── Chat area ── */
+.chat-wrap{flex:1;overflow:hidden;position:relative;z-index:1;display:flex;flex-direction:column;}
+.messages{
+  flex:1;overflow-y:auto;padding:20px;
+  display:flex;flex-direction:column;gap:16px;
+}
+.messages::-webkit-scrollbar{width:4px;}
+.messages::-webkit-scrollbar-thumb{background:var(--border2);}
+
+/* ── Message bubbles ── */
+.msg{display:flex;gap:10px;animation:msgIn .3s ease both;}
+@keyframes msgIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.msg.user{flex-direction:row-reverse;}
+.msg-avatar{
+  width:28px;height:28px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Syne',sans-serif;font-weight:800;font-size:.6rem;
+  margin-top:2px;
+}
+.msg.user .msg-avatar{background:linear-gradient(135deg,var(--accent2),var(--accent));color:#000;}
+.msg.ai   .msg-avatar{background:var(--surface2);border:1px solid var(--border2);color:var(--accent2);}
+.msg-body{max-width:78%;display:flex;flex-direction:column;gap:4px;}
+.msg.user .msg-body{align-items:flex-end;}
+.msg-bubble{
+  padding:12px 16px;font-size:.68rem;line-height:1.85;
+  border:1px solid var(--border);
+}
+.msg.user .msg-bubble{
+  background:var(--user-bg);border-color:rgba(155,141,255,.2);
+  color:var(--text);
+}
+.msg.ai .msg-bubble{
+  background:var(--ai-bg);border-color:var(--border);
+  color:rgba(238,238,248,.88);
+}
+.msg-bubble p{margin-bottom:.6em;}
+.msg-bubble p:last-child{margin-bottom:0;}
+.msg-bubble strong{color:var(--accent);font-weight:500;}
+.msg-bubble em{color:var(--accent2);font-style:normal;}
+.msg-bubble ul,
+.msg-bubble ol{padding-left:1.2em;margin:.4em 0;}
+.msg-bubble li{margin-bottom:.3em;}
+.msg-bubble code{
+  background:rgba(126,255,212,.08);border:1px solid rgba(126,255,212,.15);
+  padding:1px 5px;font-size:.62rem;color:var(--accent);
+}
+.msg-meta{font-size:.5rem;color:var(--muted);margin-top:2px;}
+.msg.user .msg-meta{text-align:right;}
+
+/* Context chip */
+.ctx-chip{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:.5rem;padding:2px 8px;
+  border:1px solid rgba(155,141,255,.2);
+  color:var(--accent2);background:rgba(155,141,255,.06);
+  margin-bottom:4px;cursor:pointer;transition:all .15s;
+}
+.ctx-chip:hover{border-color:var(--accent2);background:rgba(155,141,255,.12);}
+
+/* Context drawer */
+.ctx-drawer{
+  background:var(--surface2);border:1px solid var(--border2);
+  padding:10px 14px;margin-top:4px;font-size:.58rem;
+  color:var(--muted2);line-height:1.7;display:none;
+  max-height:200px;overflow-y:auto;
+}
+.ctx-drawer.open{display:block;}
+.ctx-job{padding:5px 0;border-bottom:1px solid var(--border);color:var(--muted2);}
+.ctx-job:last-child{border:none;}
+.ctx-job-title{color:var(--text);font-size:.6rem;}
+.ctx-job-score{color:var(--accent);}
+
+/* Typing indicator */
+.typing{display:flex;gap:4px;align-items:center;padding:12px 16px;}
+.typing span{
+  width:6px;height:6px;border-radius:50%;background:var(--accent2);
+  animation:blink 1.2s ease infinite;
+}
+.typing span:nth-child(2){animation-delay:.2s;}
+.typing span:nth-child(3){animation-delay:.4s;}
+@keyframes blink{0%,80%,100%{opacity:.2;transform:scale(.8);}40%{opacity:1;transform:scale(1);}}
+
+/* Empty state */
+.empty-state{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:12px;padding:40px 20px;text-align:center;
+}
+.empty-icon{font-size:2.5rem;opacity:.15;}
+.empty-title{
+  font-family:'Instrument Serif',serif;font-style:italic;
+  font-size:1.3rem;color:var(--text);opacity:.6;
+}
+.empty-sub{font-size:.6rem;color:var(--muted2);line-height:1.8;max-width:380px;}
+
+/* ── Input area ── */
+.input-area{
+  position:relative;z-index:10;
+  padding:14px 20px;border-top:1px solid var(--border);
+  background:rgba(8,8,16,.9);backdrop-filter:blur(12px);
+  flex-shrink:0;
+}
+.input-row{display:flex;gap:8px;align-items:flex-end;}
+.input-wrap{flex:1;position:relative;}
+textarea#chatInput{
+  width:100%;background:var(--surface2);border:1px solid var(--border2);
+  color:var(--text);font-family:'DM Mono',monospace;font-size:.7rem;
+  padding:10px 14px;outline:none;resize:none;
+  min-height:42px;max-height:120px;line-height:1.6;
+  transition:border-color .2s;overflow-y:auto;
+}
+textarea#chatInput:focus{border-color:rgba(126,255,212,.4);}
+textarea#chatInput::placeholder{color:var(--muted);}
+.send-btn{
+  width:42px;height:42px;background:var(--accent);border:none;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:1rem;transition:all .2s;flex-shrink:0;
+}
+.send-btn:hover{background:#5ef0c0;}
+.send-btn:disabled{background:var(--border2);cursor:not-allowed;}
+.send-btn svg{width:16px;height:16px;fill:#000;}
+.input-hint{
+  display:flex;justify-content:space-between;margin-top:5px;
+  font-size:.52rem;color:var(--muted);
+}
+
+@media(max-width:640px){
+  .header-center{display:none;}
+  .suggestions{display:none;}
+  .msg-body{max-width:90%;}
+}
+
+/* ═══════════════════════════════════════════════════════
+   PERSONA COACH LOADING SCREEN
+═══════════════════════════════════════════════════════ */
+#coachLoader{
+  position:fixed;inset:0;z-index:1000;
+  background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:0;
+}
+.cl-orb{
+  position:relative;width:90px;height:90px;margin-bottom:32px;
+}
+/* Outer rotating ring */
+.cl-orb::before{
+  content:'';position:absolute;inset:-4px;border-radius:50%;
+  border:1.5px solid transparent;
+  border-top-color:var(--accent);border-right-color:var(--accent2);
+  animation:orbSpin 1.8s linear infinite;
+}
+/* Inner pulsing orb */
+.cl-orb::after{
+  content:'';position:absolute;inset:8px;border-radius:50%;
+  background:radial-gradient(circle at 40% 40%,
+    rgba(126,255,212,.25) 0%,
+    rgba(155,141,255,.15) 50%,
+    transparent 70%);
+  animation:orbPulse 2.4s ease-in-out infinite;
+  border:1px solid rgba(126,255,212,.15);
+}
+.cl-orb-inner{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:1.6rem;
+  animation:orbPulse 2.4s ease-in-out infinite;
+}
+@keyframes orbSpin{to{transform:rotate(360deg)}}
+@keyframes orbPulse{0%,100%{opacity:.7;transform:scale(1);}50%{opacity:1;transform:scale(1.06);}}
+
+/* Title */
+.cl-title{
+  font-family:'Instrument Serif',serif;font-style:italic;
+  font-size:1.55rem;color:var(--text);margin-bottom:6px;
+  animation:fadeSlide .6s ease both;
+}
+.cl-title em{color:var(--accent);font-style:normal;}
+.cl-sub{
+  font-size:.58rem;color:var(--muted2);letter-spacing:.14em;text-transform:uppercase;
+  margin-bottom:40px;animation:fadeSlide .6s .1s ease both;
+}
+@keyframes fadeSlide{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* Steps */
+.cl-steps{
+  display:flex;flex-direction:column;gap:10px;width:340px;
+  animation:fadeSlide .5s .2s ease both;
+}
+.cl-step{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 14px;
+  border:1px solid var(--border);background:var(--surface);
+  transition:all .4s;
+}
+.cl-step.active{border-color:rgba(126,255,212,.3);background:rgba(126,255,212,.04);}
+.cl-step.done{border-color:rgba(126,255,212,.15);opacity:.7;}
+.cl-step.error{border-color:rgba(255,107,107,.3);background:rgba(255,107,107,.04);}
+.cl-step-icon{
+  width:22px;height:22px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.7rem;border:1px solid var(--border2);
+  transition:all .4s;
+}
+.cl-step.active .cl-step-icon{
+  border-color:var(--accent);color:var(--accent);
+  animation:iconSpin .8s linear infinite;
+}
+@keyframes iconSpin{to{transform:rotate(360deg)}}
+.cl-step.done .cl-step-icon{
+  background:rgba(126,255,212,.15);border-color:var(--accent);color:var(--accent);
+}
+.cl-step.error .cl-step-icon{border-color:var(--red);color:var(--red);}
+.cl-step-info{flex:1;}
+.cl-step-name{font-size:.62rem;color:var(--text);margin-bottom:2px;}
+.cl-step.active .cl-step-name{color:var(--accent);}
+.cl-step-detail{font-size:.52rem;color:var(--muted2);}
+
+/* Progress bar */
+.cl-progress{
+  width:340px;height:2px;background:var(--border);margin-top:20px;
+  animation:fadeSlide .5s .3s ease both;overflow:hidden;
+}
+.cl-progress-fill{
+  height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent));
+  width:0%;transition:width .5s cubic-bezier(.4,0,.2,1);
+}
+
+/* Cost badge */
+.cl-cost{
+  margin-top:14px;font-size:.54rem;color:var(--muted);
+  animation:fadeSlide .5s .4s ease both;
+}
+.cl-cost span{color:var(--accent2);}
+
+/* Particle dots */
+.cl-particles{
+  position:absolute;inset:0;pointer-events:none;overflow:hidden;
+}
+.cl-p{
+  position:absolute;width:2px;height:2px;border-radius:50%;
+  background:var(--accent);opacity:0;
+  animation:particleFloat linear infinite;
+}
+@keyframes particleFloat{
+  0%{opacity:0;transform:translateY(0) scale(0);}
+  10%{opacity:.6;}
+  90%{opacity:.2;}
+  100%{opacity:0;transform:translateY(-80vh) scale(.5);}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ PERSONA COACH LOADER ═══ -->
+<div id="coachLoader" style="display:none">
+  <div class="cl-particles" id="clParticles"></div>
+  <div class="cl-orb">
+    <div class="cl-orb-inner">✦</div>
+  </div>
+  <div class="cl-title">Building your <em>Persona Insight Coach</em></div>
+  <div class="cl-sub">Analysing your job universe · One-time setup</div>
+  <div class="cl-steps">
+    <div class="cl-step" id="cls-1">
+      <div class="cl-step-icon">◌</div>
+      <div class="cl-step-info">
+        <div class="cl-step-name">Categorising job titles</div>
+        <div class="cl-step-detail" id="cld-1">Waiting…</div>
+      </div>
+    </div>
+    <div class="cl-step" id="cls-2">
+      <div class="cl-step-icon">◌</div>
+      <div class="cl-step-info">
+        <div class="cl-step-name">Canonicalising skill gaps</div>
+        <div class="cl-step-detail" id="cld-2">Waiting…</div>
+      </div>
+    </div>
+    <div class="cl-step" id="cls-3">
+      <div class="cl-step-icon">◌</div>
+      <div class="cl-step-info">
+        <div class="cl-step-name">Extracting company qualification themes</div>
+        <div class="cl-step-detail" id="cld-3">Waiting…</div>
+      </div>
+    </div>
+    <div class="cl-step" id="cls-4">
+      <div class="cl-step-icon">◌</div>
+      <div class="cl-step-info">
+        <div class="cl-step-name">Building intelligence index</div>
+        <div class="cl-step-detail" id="cld-4">Waiting…</div>
+      </div>
+    </div>
+  </div>
+  <div class="cl-progress"><div class="cl-progress-fill" id="clProgressFill"></div></div>
+  <div class="cl-cost">One-time cost: <span id="clCost">~$0.025</span> · Cached until DB reload</div>
+</div>
+
+<!-- Header -->
+<div class="header">
+  <div class="logo"><div class="logo-pulse"></div>Job<span>Radar</span></div>
+  <div class="header-center">
+    <div class="header-title">Your Persona Insight Coach</div>
+    <div class="header-sub">GPT-powered · Full index · Conversation memory</div>
+  </div>
+  <div class="header-right">
+    <div class="db-status"><div class="db-dot" id="dbDot"></div><span id="dbStatusText">No DB loaded</span></div>
+    <button class="hbtn danger" onclick="clearHistory()">✕ Clear chat</button>
+  </div>
+</div>
+
+<!-- Setup bar -->
+<div class="setup">
+  <span class="setup-label">OpenAI Key</span>
+  <input class="setup-input" id="apiKey" type="password" placeholder="sk-…" style="max-width:200px">
+  <div class="setup-divider"></div>
+  <span class="setup-label">jobs_db.json</span>
+  <label class="setup-file" id="dbLabel">
+    ↑ Load DB
+    <input type="file" id="dbInput" accept=".json" style="display:none" onchange="loadDB(this)">
+  </label>
+  <div class="setup-divider"></div>
+  <span class="setup-label">tracker</span>
+  <label class="setup-file" id="trackerLabel">
+    ↑ Tracker
+    <input type="file" id="trackerInput" accept=".json" style="display:none" onchange="loadTracker(this)">
+  </label>
+  <div class="setup-divider"></div>
+  <span class="setup-label">Context</span>
+  <input class="setup-input" id="topN" type="number" value="20" min="5" max="50" style="max-width:60px">
+  <span class="setup-label">jobs/q</span>
+  <div class="setup-divider"></div>
+  <span class="setup-label">Min score</span>
+  <input class="setup-input" id="minScore" type="number" value="5" min="1" max="10" style="max-width:55px">
+</div>
+
+<!-- Stats bar -->
+<div class="stats-bar" id="statsBar" style="display:none">
+  <div class="stat"><div class="stat-n" id="st-total" style="color:var(--accent)">—</div><div class="stat-l">Scored Jobs</div></div>
+  <div class="stat"><div class="stat-n" id="st-high"  style="color:var(--accent2)">—</div><div class="stat-l">Score ≥ 7</div></div>
+  <div class="stat"><div class="stat-n" id="st-saved" style="color:var(--accent3)">—</div><div class="stat-l">Saved</div></div>
+  <div class="stat"><div class="stat-n" id="st-applied" style="color:var(--gold)">—</div><div class="stat-l">Applied</div></div>
+  <div class="stat"><div class="stat-n" id="st-companies" style="color:var(--muted2)">—</div><div class="stat-l">Companies</div></div>
+</div>
+
+<!-- Suggested prompts -->
+<div class="suggestions" id="sugBar" style="display:none">
+  <button class="sug" onclick="sendSuggestion(this)">Which 3 jobs should I apply to first?</button>
+  <button class="sug" onclick="sendSuggestion(this)">What skills am I missing most?</button>
+  <button class="sug" onclick="sendSuggestion(this)">Compare Goldman vs JPMorgan roles</button>
+  <button class="sug" onclick="sendSuggestion(this)">Management roles at Mastercard — am I a fit?</button>
+  <button class="sug" onclick="sendSuggestion(this)">Data engineering roles scoring 7+?</button>
+  <button class="sug" onclick="sendSuggestion(this)">Which company has the most high-scoring roles?</button>
+  <button class="sug" onclick="sendSuggestion(this)">What skill would most improve my matches?</button>
+  <button class="sug" onclick="sendSuggestion(this)">Which roles need skills I don't have?</button>
+</div>
+
+<!-- Chat -->
+<div class="chat-wrap">
+  <div class="messages" id="messages">
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">✦</div>
+      <div class="empty-title">Your Persona Insight Coach</div>
+      <div class="empty-sub">Load your jobs_db.json — your coach will build an intelligence index of your entire job universe, then answer any question about it with precision.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Input -->
+<div class="input-area">
+  <div class="input-row">
+    <div class="input-wrap">
+      <textarea id="chatInput" placeholder="Ask your coach anything…" rows="1"
+        onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+    </div>
+    <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled title="Send">
+      <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+    </button>
+  </div>
+  <div class="input-hint">
+    <span>Enter to send · Shift+Enter for new line</span>
+    <span id="ctxHint"></span>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════
+let allJobs   = [];
+let tracker   = { saved:{}, applied:{} };
+let history   = [];
+let isLoading = false;
+let dbIndex   = {};
+let lastJobs  = [];
+let lastAnswer= '';
+
+const CANDIDATE_PROFILE = `
+Name: Koushik Majeti
+Current Role: Lead Advanced Analytics, American Express
+Experience: 5+ years
+
+TECHNICAL SKILLS:
+SQL (Hive, GCP), Python, MS Excel (Advanced + Automation), Tableau, Power BI,
+Statistical Testing, EDA, ETL, KPI Dashboard Development, Automation Scripting,
+Generative AI (Prompt Engineering), HTML/CSS/JavaScript (D3.js, Chart.js),
+Custom Visualization Building
+
+CORE COMPETENCIES:
+Data Analytics & Visualization, Business Intelligence, Automation & Workflow Optimization,
+KPI Development & Performance Tracking, Generative AI in Analytics,
+Process Improvement & Operational Efficiency, Stakeholder Management,
+Cross-functional Collaboration, Data Storytelling
+
+WORK EXPERIENCE:
+Lead Advanced Analytics @ American Express, Gurugram (Jun 2024 - Present)
+- Built SPLIT: JS+GenAI multivariate metric decomposition tool
+- Tableau/Power BI dashboards for senior leadership decisions
+- 2x American Express Tribute Award winner
+
+Senior Data Analyst @ American Express (Mar 2022 - Jun 2024)
+- Analytics frameworks for customer care metrics → $2M+ annualized savings
+- Built PYMagix: automation platform, 200+ users, 20-25 hrs/user/month saved
+- End-to-end ETL infrastructure
+
+Business Systems Analyst @ American Express (Aug 2020 - Mar 2022)
+- Monthly forecasting, clustering, predictive models, ETL pipelines
+
+EDUCATION: B.Tech ECE, IIIT Naya Raipur | GPA 8.6 | 2020
+JOB TARGET: Data Science, BI, Advanced Analytics, Data Engineering
+PREFERRED: Mid-Senior, Full-time, India
+`.trim();
+
+// ═══════════════════════════════════════════════════════════════════════
+// LOADER ANIMATION
+// ═══════════════════════════════════════════════════════════════════════
+function showLoader(){
+  document.getElementById('coachLoader').style.display='flex';
+  spawnParticles();
+}
+function hideLoader(){
+  const el=document.getElementById('coachLoader');
+  el.style.transition='opacity .5s';
+  el.style.opacity='0';
+  setTimeout(()=>el.style.display='none',500);
+}
+
+function spawnParticles(){
+  const container=document.getElementById('clParticles');
+  container.innerHTML='';
+  const colors=['var(--accent)','var(--accent2)','var(--accent3)','var(--gold)'];
+  for(let i=0;i<18;i++){
+    const p=document.createElement('div');
+    p.className='cl-p';
+    p.style.cssText=`
+      left:${Math.random()*100}%;
+      top:${60+Math.random()*40}%;
+      background:${colors[Math.floor(Math.random()*colors.length)]};
+      animation-duration:${4+Math.random()*6}s;
+      animation-delay:${Math.random()*4}s;
+      width:${1+Math.random()*2}px;height:${1+Math.random()*2}px;
+    `;
+    container.appendChild(p);
+  }
+}
+
+function setStep(n, state, detail){
+  const step=document.getElementById(`cls-${n}`);
+  const det=document.getElementById(`cld-${n}`);
+  step.className=`cl-step ${state}`;
+  const icons={waiting:'◌',active:'↻',done:'✓',error:'✗'};
+  step.querySelector('.cl-step-icon').textContent=icons[state]||'◌';
+  if(detail) det.textContent=detail;
+  // Progress bar: each step = 25%
+  const pct={1:0,2:25,3:50,4:75}[n]||(state==='done'?100:0);
+  if(state==='done') setProgress(pct+25);
+  else if(state==='active') setProgress(pct);
+}
+function setProgress(pct){
+  document.getElementById('clProgressFill').style.width=Math.min(100,pct)+'%';
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// FILE LOADING
+// ═══════════════════════════════════════════════════════════════════════
+function loadDB(input){
+  const file=input.files[0]; if(!file) return;
+  const key=document.getElementById('apiKey').value.trim();
+  if(!key){ alert('Enter your OpenAI API key first — it is needed to build the intelligence index.'); return; }
+  const r=new FileReader();
+  r.onload=async e=>{
+    try{
+      const raw=JSON.parse(e.target.result);
+      const jobs=Array.isArray(raw)?raw:Object.values(raw);
+      allJobs=jobs.filter(j=>j.similarity_score!=null);
+      showLoader();
+      await buildSmartIndex();
+      hideLoader();
+      document.getElementById('dbLabel').textContent=`✓ ${allJobs.length.toLocaleString()} jobs`;
+      document.getElementById('dbLabel').classList.add('loaded');
+      document.getElementById('dbDot').classList.add('loaded');
+      document.getElementById('dbStatusText').textContent=`${allJobs.length.toLocaleString()} jobs · coach ready`;
+      document.getElementById('statsBar').style.display='';
+      document.getElementById('sugBar').style.display='';
+      document.getElementById('sendBtn').disabled=false;
+      updateStatsBar();
+      addSystemMsg(`✦ Persona Insight Coach ready — ${allJobs.length.toLocaleString()} jobs fully indexed with GPT intelligence.`);
+    }catch(err){ hideLoader(); alert('Error: '+err.message); console.error(err); }
+  };
+  r.readAsText(file);
+}
+
+function loadTracker(input){
+  const file=input.files[0]; if(!file) return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const d=JSON.parse(e.target.result);
+      tracker.saved=d.saved||{}; tracker.applied=d.applied||{};
+      document.getElementById('trackerLabel').textContent='✓ Tracker';
+      document.getElementById('trackerLabel').classList.add('loaded');
+      updateStatsBar();
+    }catch(err){ alert('Tracker parse error'); }
+  };
+  r.readAsText(file);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// SMART INDEX — GPT-powered, built once on load
+// ═══════════════════════════════════════════════════════════════════════
+async function buildSmartIndex(){
+  // Phase 0: fast structural pass (no GPT)
+  const rawIndex = buildRawIndex();
+
+  // Phase 1: GPT title categorisation
+  setStep(1,'active',`${Object.keys(rawIndex.distinctTitles).length} unique titles to classify…`);
+  let titleMap = {};
+  try{
+    titleMap = await batchCategoriseTitles(rawIndex.distinctTitles);
+    setStep(1,'done',`${Object.keys(titleMap).length} titles categorised`);
+  }catch(e){
+    setStep(1,'error','Failed — using regex fallback');
+    console.warn('Title batch failed:', e);
+  }
+
+  // Phase 2: GPT gap canonicalisation
+  setStep(2,'active',`${Object.keys(rawIndex.distinctGaps).length} gap variants to merge…`);
+  let gapMap = {};
+  try{
+    gapMap = await batchCanonicaliseGaps(rawIndex.distinctGaps);
+    const clusters = new Set(Object.values(gapMap)).size;
+    setStep(2,'done',`${Object.keys(gapMap).length} variants → ${clusters} canonical gaps`);
+  }catch(e){
+    setStep(2,'error','Failed — using raw gap strings');
+    console.warn('Gap batch failed:', e);
+  }
+
+  // Phase 3: GPT qual themes per company
+  setStep(3,'active',`Extracting themes from ${Object.keys(rawIndex.companyQualText).length} companies…`);
+  let qualThemes = {};
+  try{
+    qualThemes = await batchExtractQualThemes(rawIndex.companyQualText);
+    setStep(3,'done',`Qual themes ready for ${Object.keys(qualThemes).length} companies`);
+  }catch(e){
+    setStep(3,'error','Failed — using extracted snippets');
+    console.warn('Qual batch failed:', e);
+  }
+
+  // Phase 4: rebuild full index with GPT data
+  setStep(4,'active','Building final intelligence index…');
+  dbIndex = buildFinalIndex(rawIndex, titleMap, gapMap, qualThemes);
+  setStep(4,'done',`Index complete — ${allJobs.length.toLocaleString()} jobs, ${Object.keys(dbIndex.byCompany).length} companies`);
+  setProgress(100);
+
+  // Brief pause to show completion
+  await new Promise(r=>setTimeout(r,800));
+}
+
+// ── Phase 0: raw structural pass ──────────────────────────────────────
+function buildRawIndex(){
+  const distinctTitles  = {};   // title → count
+  const distinctGaps    = {};   // gap string → count
+  const companyQualText = {};   // company → [qual text chunks]
+
+  allJobs.forEach(j => {
+    const t = j.title||'';
+    if(t) distinctTitles[t] = (distinctTitles[t]||0) + 1;
+    if(j.match_gaps) distinctGaps[j.match_gaps] = (distinctGaps[j.match_gaps]||0) + 1;
+    const co = j.company||'Unknown';
+    const qual = j.minimum_qualifications||j.required_qualifications||
+                 j.basic_qualifications||j.qualifications||'';
+    if(qual){
+      if(!companyQualText[co]) companyQualText[co] = [];
+      if(companyQualText[co].length < 20) companyQualText[co].push(qual.slice(0,300));
+    }
+  });
+  return { distinctTitles, distinctGaps, companyQualText };
+}
+
+// ── Phase 1: GPT title categorisation ────────────────────────────────
+async function batchCategoriseTitles(distinctTitles){
+  const titles = Object.keys(distinctTitles);
+  const CATS = ['Analytics / BI','Data Science / ML','Data Engineering',
+                'Engineering','Management / Leadership','Risk / Compliance',
+                'Finance / Quant','Consulting','Product / Program','Other'];
+  const BATCH = 200;   // titles per GPT call
+  const result = {};
+
+  for(let i=0; i<titles.length; i+=BATCH){
+    const batch = titles.slice(i, i+BATCH);
+    setStep(1,'active',`Classifying titles ${i+1}–${Math.min(i+BATCH,titles.length)} of ${titles.length}…`);
+    const prompt =
+      `Classify each job title into exactly one category.\n`+
+      `Categories: ${CATS.join(', ')}\n\n`+
+      `Rules:\n`+
+      `- "Head of X" / "Director of X" / "VP of X" → Management / Leadership\n`+
+      `- "Lead X" where X is a role → keep the role category (e.g. Lead Analyst → Analytics / BI)\n`+
+      `- "Decision Science" → Data Science / ML\n`+
+      `- "Strategy & Insights" / "Business Intelligence" → Analytics / BI\n`+
+      `- "Quantitative" / "Strats" / "Quant" → Finance / Quant\n`+
+      `- "Data Engineer" / "ETL" / "Pipeline" / "Platform" → Data Engineering\n`+
+      `- "Product Manager" / "Program Manager" → Product / Program\n\n`+
+      `Titles to classify:\n${batch.map((t,i)=>`${i+1}. ${t}`).join('\n')}\n\n`+
+      `Return ONLY valid JSON: {"title":"category",...} — no markdown, no explanation.`;
+
+    const resp = await openaiCall({
+      model:'gpt-4o-mini',
+      messages:[{role:'user',content:prompt}],
+      max_tokens:800, temperature:0
+    });
+    const raw = resp.choices[0].message.content.trim().replace(/```json|```/g,'').trim();
+    try{ Object.assign(result, JSON.parse(raw)); }catch(e){ console.warn('Title batch parse error',e); }
+  }
+  return result;
+}
+
+// ── Phase 2: GPT gap canonicalisation ────────────────────────────────
+async function batchCanonicaliseGaps(distinctGaps){
+  const gaps = Object.keys(distinctGaps);
+  if(!gaps.length) return {};
+  setStep(2,'active',`Merging ${gaps.length} gap variants into canonical clusters…`);
+
+  const prompt =
+    `These are skill gap descriptions from job match analysis. Many are variations of the same skill.\n`+
+    `Group them into canonical clusters — map each to a clean, specific canonical name.\n\n`+
+    `Rules:\n`+
+    `- Be specific: "Machine Learning depth" not "ML skills"\n`+
+    `- Group obvious variants: "ML background", "machine learning experience", "ML/AI depth" → same cluster\n`+
+    `- Keep financial domain gaps distinct: "risk modelling" ≠ "credit risk" ≠ "market risk"\n`+
+    `- Maximum 15 canonical clusters total\n`+
+    `- Canonical name should be professional and specific\n\n`+
+    `Gap strings to canonicalise:\n${gaps.map((g,i)=>`${i+1}. ${g}`).join('\n')}\n\n`+
+    `Return ONLY valid JSON: {"original gap string":"Canonical Gap Name",...} — no markdown.`;
+
+  const resp = await openaiCall({
+    model:'gpt-4o-mini',
+    messages:[{role:'user',content:prompt}],
+    max_tokens:1500, temperature:0
+  });
+  const raw = resp.choices[0].message.content.trim().replace(/```json|```/g,'').trim();
+  try{ return JSON.parse(raw); }
+  catch(e){ console.warn('Gap canonicalisation parse error',e); return {}; }
+}
+
+// ── Phase 3: GPT qual themes per company ─────────────────────────────
+async function batchExtractQualThemes(companyQualText){
+  const companies = Object.keys(companyQualText);
+  if(!companies.length) return {};
+  setStep(3,'active',`Extracting qualification themes for ${companies.length} companies…`);
+
+  // Send all companies in one call — compact format
+  const companyBlocks = companies.map(co => {
+    const samples = companyQualText[co].slice(0,8).join(' | ').slice(0,600);
+    return `COMPANY: ${co}\nQUAL TEXT: ${samples}`;
+  }).join('\n\n');
+
+  const prompt =
+    `Extract the 4 most specific, distinctive qualification requirements per company.\n`+
+    `Focus on: years of experience, specific tools/technologies, domain expertise, credentials.\n`+
+    `IGNORE generic statements like "strong communication skills", "team player", "fast-paced environment".\n\n`+
+    `${companyBlocks}\n\n`+
+    `Return ONLY valid JSON: {"Company Name":["req 1","req 2","req 3","req 4"],...} — no markdown.`;
+
+  const resp = await openaiCall({
+    model:'gpt-4o-mini',
+    messages:[{role:'user',content:prompt}],
+    max_tokens:1500, temperature:0
+  });
+  const raw = resp.choices[0].message.content.trim().replace(/```json|```/g,'').trim();
+  try{ return JSON.parse(raw); }
+  catch(e){ console.warn('Qual themes parse error',e); return {}; }
+}
+
+// ── Phase 4: final index with GPT data ───────────────────────────────
+function buildFinalIndex(rawIndex, titleMap, gapMap, qualThemes){
+  const idx = {
+    byCompany   : {},
+    skillFreq   : {},
+    gapFreq     : {},        // canonical gap → count
+    gapWeighted : {},        // canonical gap → score-weighted count
+    roleFreq    : {},
+    scoreGroups : { high:[], mid:[], low:[] },
+    skillImpact : {},
+    recentJobs  : [],
+    titleMap,                // cached for lookups
+    gapMap,                  // cached for lookups
+    qualThemes               // GPT-extracted per company
+  };
+
+  allJobs.forEach(j => {
+    const co    = j.company||'Unknown';
+    const score = j.similarity_score||0;
+    // Use GPT category if available, regex fallback if not
+    const cat   = titleMap[j.title||''] || categoriseFallback(j.title);
+    const days  = daysSince(j.fetched_date||j.posted_date);
+    // Canonical gap
+    const rawGap  = j.match_gaps||'';
+    const canonGap = rawGap ? (gapMap[rawGap]||rawGap) : '';
+
+    if(!idx.byCompany[co]){
+      idx.byCompany[co]={
+        total:0,jobs:[],scores:[],avg:0,high:0,count7:0,
+        roleTypes:{},skillFreq:{},gapFreq:{},gapWeighted:{},recentCount:0
+      };
+    }
+    const cd=idx.byCompany[co];
+    cd.total++; cd.jobs.push(j); cd.scores.push(score);
+    cd.roleTypes[cat]=(cd.roleTypes[cat]||0)+1;
+    if(days<=14) cd.recentCount++;
+
+    // Skills
+    (j.matching_skills||[]).forEach(s=>{
+      cd.skillFreq[s]=(cd.skillFreq[s]||0)+1;
+      idx.skillFreq[s]=(idx.skillFreq[s]||0)+1;
+      if(!idx.skillImpact[s]) idx.skillImpact[s]={scores:[],count:0};
+      idx.skillImpact[s].scores.push(score);
+      idx.skillImpact[s].count++;
+    });
+
+    // Canonical gaps
+    if(canonGap){
+      const w=score/10;
+      cd.gapFreq[canonGap]=(cd.gapFreq[canonGap]||0)+1;
+      idx.gapFreq[canonGap]=(idx.gapFreq[canonGap]||0)+1;
+      cd.gapWeighted[canonGap]=(cd.gapWeighted[canonGap]||0)+w;
+      idx.gapWeighted[canonGap]=(idx.gapWeighted[canonGap]||0)+w;
+    }
+
+    idx.roleFreq[cat]=(idx.roleFreq[cat]||0)+1;
+    if(score>=8) idx.scoreGroups.high.push(j);
+    else if(score>=5) idx.scoreGroups.mid.push(j);
+    else idx.scoreGroups.low.push(j);
+    if(days<=14) idx.recentJobs.push(j);
+  });
+
+  // Finalise
+  Object.values(idx.byCompany).forEach(cd=>{
+    cd.avg=+(cd.scores.reduce((a,b)=>a+b,0)/cd.scores.length).toFixed(1);
+    cd.high=Math.max(...cd.scores);
+    cd.count7=cd.scores.filter(s=>s>=7).length;
+  });
+  Object.entries(idx.skillImpact).forEach(([s,d])=>{
+    d.avg=+(d.scores.reduce((a,b)=>a+b,0)/d.scores.length).toFixed(1);
+  });
+  idx.recentJobs.sort((a,b)=>(b.similarity_score||0)-(a.similarity_score||0));
+  return idx;
+}
+
+// Regex fallback for titles not in GPT map (new companies added later)
+function categoriseFallback(title){
+  const t=(title||'').toLowerCase();
+  if(/data engineer|etl|pipeline|warehouse|dbt|lakehouse/.test(t)) return 'Data Engineering';
+  if(/scientist|science|machine learning|ml|deep learning|nlp|llm/.test(t)) return 'Data Science / ML';
+  if(/engineer|engineering|developer|swe|sde|software/.test(t)) return 'Engineering';
+  if(/analyst|analytics|analysis|bi |intelligence|reporting|insights/.test(t)) return 'Analytics / BI';
+  if(/manager|management|head of|director|vp |vice president/.test(t)) return 'Management / Leadership';
+  if(/consultant|consulting|advisory/.test(t)) return 'Consulting';
+  if(/product manager|program manager|project manager/.test(t)) return 'Product / Program';
+  if(/risk|compliance|fraud|audit|control/.test(t)) return 'Risk / Compliance';
+  if(/finance|financial|accounting|quant|treasury/.test(t)) return 'Finance / Quant';
+  return 'Other';
+}
+
+function daysSince(dateStr){
+  if(!dateStr) return 999;
+  return (Date.now()-new Date(dateStr).getTime())/86400000;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// OPENAI HELPER
+// ═══════════════════════════════════════════════════════════════════════
+async function openaiCall(body){
+  const key=document.getElementById('apiKey').value.trim();
+  if(!key) throw new Error('No API key');
+  const resp=await fetch('https://api.openai.com/v1/chat/completions',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+    body:JSON.stringify(body)
+  });
+  if(!resp.ok){
+    const e=await resp.json().catch(()=>({error:{message:resp.statusText}}));
+    throw new Error(e.error?.message||'OpenAI '+resp.status);
+  }
+  return resp.json();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// GPT CLASSIFIER — Stage 1 of question pipeline
+// ═══════════════════════════════════════════════════════════════════════
+async function classifyWithGPT(question){
+  const companies=Object.keys(dbIndex.byCompany).join(', ');
+  const roleCats=Object.keys(dbIndex.roleFreq||{}).join(', ');
+  const recentHistory=history.slice(-4)
+    .map(m=>`${m.role==='user'?'User':'Assistant'}: ${m.content.slice(0,200)}`).join('\n');
+
+  const systemPrompt=
+    `Classify this job search question into exactly one category.\n\n`+
+    `CATEGORIES:\n`+
+    `  AGGREGATE           - counts, distributions, overview across companies\n`+
+    `  MARKET_OVERVIEW     - general market question: what a company is hiring for, role landscape, titles, departments (NO personal fit)\n`+
+    `  COMPANY_DEEP_DIVE   - personal question: am I a fit, which roles suit me, best matches at a company\n`+
+    `  COMPANY_REQUIREMENTS- what a company looks for in candidates, their hiring criteria\n`+
+    `  COMPARE_COMPANIES   - comparison between 2+ companies\n`+
+    `  GAP_ANALYSIS        - missing skills, weaknesses, what to upskill\n`+
+    `  SKILL_ANALYSIS      - which skills appear most, skill trends\n`+
+    `  SKILL_IMPACT        - which skill to learn for maximum score improvement\n`+
+    `  ROLE_ANALYSIS       - what types of roles exist\n`+
+    `  TOP_MATCHES         - best job recommendations, apply first\n`+
+    `  RECENT              - recent/new/latest jobs\n`+
+    `  SINGLE_JOB_DETAIL   - full detail on one specific job\n`+
+    `  SAVED               - saved/bookmarked jobs\n`+
+    `  APPLIED             - applied jobs\n\n`+
+    `COMPANIES IN DB: ${companies}\n`+
+    `ROLE CATEGORIES IN DB: ${roleCats}\n\n`+
+    `RULES:\n`+
+    `- Aliases: "Amex"→"American Express", "GS"→"Goldman Sachs", "JPMC"→"JPMorgan Chase"\n`+
+    `- CRITICAL: "what is X hiring for" / "what does X hire for" / "what roles at X" / "tell me about X roles" → MARKET_OVERVIEW (no personal fit)\n`+
+    `- CRITICAL: "am I a fit" / "suit me" / "good for me" / "my profile" / "which should I apply" → COMPANY_DEEP_DIVE (personal)\n`+
+    `- Follow-up references use conversation history\n`+
+    `- "these days"/"recently"/"new"/"latest" → recency:true\n`+
+    `- Role type in question (e.g. "management roles at X") → set role_filter to exact category name from DB\n`+
+    `- SINGLE_JOB_DETAIL: extract job_ref as number (1,2,3) or title fragment\n\n`+
+    `Return ONLY JSON: {"type":"CATEGORY","companies":[],"recency":false,"job_ref":null,"role_filter":null}`;
+
+  const userMsg=recentHistory
+    ?`Conversation so far:\n${recentHistory}\n\nNew question: ${question}`
+    :question;
+
+  const resp=await openaiCall({
+    model:'gpt-4o-mini',
+    messages:[{role:'system',content:systemPrompt},{role:'user',content:userMsg}],
+    max_tokens:100, temperature:0
+  });
+  try{
+    return JSON.parse(resp.choices[0].message.content.trim().replace(/```json|```/g,'').trim());
+  }catch(e){
+    return {type:'TOP_MATCHES',companies:[],recency:false,job_ref:null,role_filter:null};
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// CONTEXT BUILDERS
+// ═══════════════════════════════════════════════════════════════════════
+function ctxAggregate(){
+  const cos=Object.entries(dbIndex.byCompany).sort((a,b)=>b[1].count7-a[1].count7);
+  const lines=cos.map(([co,d])=>{
+    const topRoles=Object.entries(d.roleTypes).sort((a,b)=>b[1]-a[1]).slice(0,3)
+      .map(([r,n])=>`${r}(${n})`).join(', ');
+    const recent=d.recentCount>0?` | ${d.recentCount} new`:'';
+    return `  ${co}: ${d.total} jobs | avg ${d.avg}/10 | ${d.count7} score≥7 | best ${d.high}/10${recent} | ${topRoles}`;
+  }).join('\n');
+  const topSkills=Object.entries(dbIndex.skillFreq).sort((a,b)=>b[1]-a[1]).slice(0,10)
+    .map(([s,n])=>`${s}(${n})`).join(', ');
+  return {
+    contextText:`FULL DB (${allJobs.length} jobs — exact counts):\n\nBY COMPANY:\n${lines}\n\nTOP SKILLS: ${topSkills}\nSAVED: ${Object.keys(tracker.saved).length} | APPLIED: ${Object.keys(tracker.applied).length} | RECENT(14d): ${dbIndex.recentJobs.length}`,
+    chipLabel:`full DB — ${allJobs.length} jobs`,chipJobs:[]
+  };
+}
+
+function ctxMarketOverview(companies, recency, roleFilter){
+  // General market question — NO personal scores or fit analysis
+  // Just: what roles exist, what's common, what skills/depts they hire for
+  const sections = companies.map(co => {
+    const d = dbIndex.byCompany[co];
+    if(!d) return `${co}: not found in DB`;
+
+    let src = recency
+      ? d.jobs.filter(j => daysSince(j.fetched_date||j.posted_date) <= 30)
+      : d.jobs;
+    if(roleFilter){
+      const f = src.filter(j => (dbIndex.titleMap[j.title||'']||categoriseFallback(j.title)) === roleFilter);
+      if(f.length > 0) src = f;
+    }
+
+    const roleLabel = roleFilter ? ` (${roleFilter} only)` : '';
+    const recencyLabel = recency ? ` — last 30 days` : '';
+
+    // Role type breakdown
+    const roleTypes = {};
+    src.forEach(j => {
+      const cat = dbIndex.titleMap[j.title||''] || categoriseFallback(j.title);
+      roleTypes[cat] = (roleTypes[cat]||0) + 1;
+    });
+    const roleBreakdown = Object.entries(roleTypes)
+      .sort((a,b)=>b[1]-a[1])
+      .map(([r,n]) => `  ${r}: ${n} roles`)
+      .join('\n');
+
+    // Most common actual titles (not categories — real titles)
+    const titleFreq = {};
+    src.forEach(j => { if(j.title) titleFreq[j.title] = (titleFreq[j.title]||0)+1; });
+    const topTitles = Object.entries(titleFreq)
+      .sort((a,b)=>b[1]-a[1]).slice(0,15)
+      .map(([t,n]) => `  ${t}${n>1?' ('+n+')':''}`)
+      .join('\n');
+
+    // Skills most commonly required (from matching_skills — what the jobs need)
+    const skillFreq = {};
+    src.forEach(j => (j.matching_skills||[]).forEach(s => skillFreq[s]=(skillFreq[s]||0)+1));
+    const topSkills = Object.entries(skillFreq)
+      .sort((a,b)=>b[1]-a[1]).slice(0,10)
+      .map(([s,n]) => `${s}(${n})`)
+      .join(', ');
+
+    // Locations
+    const locFreq = {};
+    src.forEach(j => {
+      let loc = j.locations||'';
+      if(typeof loc==='string'&&loc.startsWith('{')){ try{loc=JSON.parse(loc).city||'';}catch(e){} }
+      if(Array.isArray(loc)) loc = loc[0]||'';
+      const city = String(loc).split(',')[0].trim();
+      if(city && city.length > 1) locFreq[city] = (locFreq[city]||0)+1;
+    });
+    const topLocs = Object.entries(locFreq)
+      .sort((a,b)=>b[1]-a[1]).slice(0,5)
+      .map(([l,n]) => `${l}(${n})`)
+      .join(', ');
+
+    // GPT qual themes if available
+    const qualSection = (dbIndex.qualThemes||{})[co]
+      ? `\nKEY REQUIREMENTS THEY LOOK FOR:\n${(dbIndex.qualThemes[co]||[]).map(q=>`  • ${q}`).join('\n')}`
+      : '';
+
+    return `${co.toUpperCase()}${roleLabel}${recencyLabel} — ${src.length} open roles\n\n`+
+      `ROLE TYPES:\n${roleBreakdown}\n\n`+
+      `SPECIFIC TITLES BEING HIRED:\n${topTitles}\n\n`+
+      `SKILLS THESE ROLES REQUIRE:\n  ${topSkills}\n\n`+
+      `HIRING LOCATIONS: ${topLocs||'Various'}` +
+      qualSection;
+  }).join('\n\n' + '─'.repeat(50) + '\n\n');
+
+  const total = companies.flatMap(co => {
+    const d = dbIndex.byCompany[co]; if(!d) return [];
+    return d.jobs;
+  }).length;
+
+  return {
+    contextText : sections,
+    chipLabel   : `${companies.join('+')} market overview — ${total} roles`,
+    chipJobs    : []   // no personal job list
+  };
+}
+
+function ctxCompanyDeepDive(companies,recency,roleFilter){
+  const sections=companies.map(co=>{
+    const d=dbIndex.byCompany[co];
+    if(!d) return `${co}: not found`;
+    let src=recency?d.jobs.filter(j=>daysSince(j.fetched_date||j.posted_date)<=30):d.jobs;
+    if(roleFilter){
+      const filtered=src.filter(j=>(dbIndex.titleMap[j.title||'']||categoriseFallback(j.title))===roleFilter);
+      if(filtered.length>0) src=filtered;
+    }
+    const roleLabel=roleFilter?` — ${roleFilter} only`:'';
+    const label=`${src.length} jobs${src.length<d.total?` of ${d.total} total`:''}${roleLabel}`;
+    const fSkillFreq={};
+    src.forEach(j=>(j.matching_skills||[]).forEach(s=>fSkillFreq[s]=(fSkillFreq[s]||0)+1));
+    const topSkills=Object.entries(fSkillFreq).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([s,n])=>`${s}(${n})`).join(', ');
+    const fGapFreq={};
+    src.forEach(j=>{if(j.match_gaps){const cg=dbIndex.gapMap[j.match_gaps]||j.match_gaps;fGapFreq[cg]=(fGapFreq[cg]||0)+1;}});
+    const topGaps=Object.entries(fGapFreq).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([g,n])=>`"${g}"(${n})`).join(', ')||'None';
+    const scores=src.map(j=>j.similarity_score||0);
+    const avg=scores.length?+(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):0;
+    const savedUrls=new Set(Object.keys(tracker.saved));
+    const appliedUrls=new Set(Object.keys(tracker.applied));
+    const jobList=src.sort((a,b)=>(b.similarity_score||0)-(a.similarity_score||0)).slice(0,25)
+      .map((j,i)=>{
+        const flags=[savedUrls.has(j.apply_url)?'SAVED':'',appliedUrls.has(j.apply_url)?'APPLIED':''].filter(Boolean).join(',');
+        return `    [${i+1}] ${j.similarity_score}/10  ${j.title||'?'}${flags?' ['+flags+']':''}${daysSince(j.fetched_date)<=14?' [NEW]':''}\n         Gaps: ${dbIndex.gapMap[j.match_gaps||'']||j.match_gaps||'None'} | ${(j.match_reason||'').slice(0,80)}`;
+      }).join('\n');
+    const roleBreakdown=roleFilter?'':
+      `  Role types: ${Object.entries(d.roleTypes).sort((a,b)=>b[1]-a[1]).map(([r,n])=>`${r}: ${n}`).join(', ')}\n`;
+    return `${co.toUpperCase()} (${label}) | avg ${avg}/10 | saved: ${src.filter(j=>savedUrls.has(j.apply_url)).length} | applied: ${src.filter(j=>appliedUrls.has(j.apply_url)).length}\n`+
+      roleBreakdown+
+      `  Skills: ${topSkills}\n  Gaps: ${topGaps}\n\n  ALL ROLES:\n${jobList}`;
+  }).join('\n\n');
+  const allCoJobs=companies.flatMap(co=>{
+    const d=dbIndex.byCompany[co];if(!d) return [];
+    let jobs=d.jobs;
+    if(roleFilter){const f=jobs.filter(j=>(dbIndex.titleMap[j.title||'']||categoriseFallback(j.title))===roleFilter);if(f.length>0) jobs=f;}
+    return jobs;
+  }).sort((a,b)=>(b.similarity_score||0)-(a.similarity_score||0)).slice(0,30);
+  return {contextText:sections,chipLabel:`${companies.join('+')}${roleFilter?` (${roleFilter})`:''} — ${allCoJobs.length} roles`,chipJobs:allCoJobs};
+}
+
+function ctxCompanyRequirements(companies){
+  const sections=companies.map(co=>{
+    const d=dbIndex.byCompany[co];if(!d) return `${co}: not found`;
+    const topSkills=Object.entries(d.skillFreq).sort((a,b)=>b[1]-a[1]).slice(0,12)
+      .map(([s,n])=>`${s} (${n}/${d.total}, ${Math.round(n/d.total*100)}%)`).join('\n    ');
+    const topGaps=Object.entries(d.gapWeighted).sort((a,b)=>b[1]-a[1]).slice(0,6)
+      .map(([g,w])=>{const rc=d.gapFreq[g]||0;return `"${g}" — ${rc} roles, avg score: ${(w/rc*10).toFixed(1)}/10`;}).join('\n    ');
+    // GPT qual themes (much better than heuristic snippets)
+    const quals=(dbIndex.qualThemes[co]||[]).length
+      ? (dbIndex.qualThemes[co]||[]).map(q=>`    • ${q}`).join('\n')
+      : '    (insufficient data)';
+    const roles=Object.entries(d.roleTypes).sort((a,b)=>b[1]-a[1]).map(([r,n])=>`${r}: ${n}`).join(', ');
+    return `${co.toUpperCase()} — ${d.total} jobs\n\n`+
+      `  ROLE TYPES: ${roles}\n\n`+
+      `  SKILLS REQUIRED (frequency):\n    ${topSkills}\n\n`+
+      `  QUALIFICATION THEMES (GPT-extracted):\n${quals}\n\n`+
+      `  YOUR GAPS (score-weighted):\n    ${topGaps||'None'}`;
+  }).join('\n\n'+'─'.repeat(50)+'\n\n');
+  const total=companies.reduce((a,co)=>a+(dbIndex.byCompany[co]?.total||0),0);
+  return {contextText:sections,chipLabel:`${companies.join('+')} requirements — ${total} jobs`,chipJobs:[]};
+}
+
+function ctxCompareCompanies(companies){
+  const cols=companies.slice(0,3).map(co=>{
+    const d=dbIndex.byCompany[co];if(!d) return `${co}: not found`;
+    const topRoles=Object.entries(d.roleTypes).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([r,n])=>`${r}(${n})`).join(', ');
+    const topSkills=Object.entries(d.skillFreq).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([s])=>s).join(', ');
+    const topGaps=Object.entries(d.gapWeighted).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([g])=>g).join('; ');
+    const best=d.jobs.sort((a,b)=>(b.similarity_score||0)-(a.similarity_score||0))[0];
+    return `${co.toUpperCase()}:\n  ${d.total} jobs | avg ${d.avg}/10 | best ${d.high}/10 | ≥7: ${d.count7} | recent: ${d.recentCount}\n  Roles: ${topRoles}\n  Skills: ${topSkills}\n  Gaps: ${topGaps||'none'}\n  Best: "${best?.title||'?'}" (${best?.similarity_score||0}/10)`;
+  });
+  return {contextText:`COMPARISON:\n\n`+cols.join('\n\n'),chipLabel:`${companies.join(' vs ')}`,chipJobs:[]};
+}
+
+function ctxGapAnalysis(){
+  const topGaps=Object.entries(dbIndex.gapWeighted).sort((a,b)=>b[1]-a[1]).slice(0,12)
+    .map(([g,w])=>{const rc=dbIndex.gapFreq[g]||0;const avgSc=(w/rc*10).toFixed(1);
+      return `  "${g}"\n    → ${rc} jobs | avg score: ${avgSc}/10 | ${rc>20?'HIGH':rc>10?'MED':'LOW'} priority`;
+    }).join('\n');
+  const coGapRate=Object.entries(dbIndex.byCompany)
+    .map(([co,d])=>[co,d.jobs.filter(j=>!j.match_gaps).length,d.total])
+    .sort((a,b)=>(b[1]/b[2])-(a[1]/a[2])).slice(0,6)
+    .map(([co,n,t])=>`  ${co}: ${n}/${t} roles with no gaps (${Math.round(n/t*100)}%)`).join('\n');
+  const perfect=allJobs.filter(j=>!j.match_gaps&&j.similarity_score>=6)
+    .sort((a,b)=>(b.similarity_score||0)-(a.similarity_score||0)).slice(0,10);
+  return {
+    contextText:`SCORE-WEIGHTED GAP ANALYSIS:\n\nCRITICAL GAPS:\n${topGaps}\n\nBEST-FIT COMPANIES:\n${coGapRate}\n\nPERFECT MATCHES (no gaps, ≥6):\n${perfect.map(j=>`  ${j.similarity_score}/10  ${j.title||'?'} @ ${j.company||'?'}`).join('\n')}`,
+    chipLabel:'weighted gap analysis',chipJobs:perfect
+  };
+}
+
+function ctxSkillAnalysis(){
+  const topSkills=Object.entries(dbIndex.skillFreq).sort((a,b)=>b[1]-a[1]).slice(0,15)
+    .map(([s,n])=>`  ${s}: ${n}/${allJobs.length} jobs (${Math.round(n/allJobs.length*100)}%)`).join('\n');
+  const byCoSkills=Object.entries(dbIndex.byCompany).sort((a,b)=>b[1].total-a[1].total).slice(0,6)
+    .map(([co,d])=>`  ${co}: ${Object.entries(d.skillFreq).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([s,n])=>`${s}(${n})`).join(', ')}`).join('\n');
+  const impact=Object.entries(dbIndex.skillImpact).filter(([,d])=>d.count>=5)
+    .sort((a,b)=>b[1].avg-a[1].avg).slice(0,8)
+    .map(([s,d])=>`  ${s}: avg score ${d.avg}/10 (${d.count} jobs)`).join('\n');
+  return {contextText:`SKILL ANALYSIS:\n\nBY FREQUENCY:\n${topSkills}\n\nBY COMPANY:\n${byCoSkills}\n\nHIGHEST-SCORING SKILLS:\n${impact}`,chipLabel:'skill analysis',chipJobs:[]};
+}
+
+function ctxSkillImpact(){
+  const gapSkills={};
+  allJobs.forEach(j=>{
+    if(j.match_gaps&&j.similarity_score>=7){
+      const cg=dbIndex.gapMap[j.match_gaps]||j.match_gaps;
+      if(!gapSkills[cg]) gapSkills[cg]={count:0,totalScore:0,jobs:[]};
+      gapSkills[cg].count++; gapSkills[cg].totalScore+=j.similarity_score; gapSkills[cg].jobs.push(j);
+    }
+  });
+  const ranked=Object.entries(gapSkills).map(([g,d])=>({g,count:d.count,avg:(d.totalScore/d.count).toFixed(1),jobs:d.jobs}))
+    .sort((a,b)=>b.count-a.count).slice(0,8);
+  const lines=ranked.map(r=>`  "${r.g}" — unlocks ${r.count} high-value jobs (avg ${r.avg}/10)\n    e.g. ${r.jobs.slice(0,3).map(j=>`${j.title} @ ${j.company}`).join(', ')}`).join('\n');
+  return {contextText:`SKILL IMPACT ANALYSIS:\n\n${lines}`,chipLabel:'skill impact',chipJobs:[]};
+}
+
+function ctxTopMatches(){
+  const topN=parseInt(document.getElementById('topN').value)||20;
+  const minScore=parseInt(document.getElementById('minScore').value)||5;
+  const jobs=allJobs.filter(j=>(j.similarity_score||0)>=minScore)
+    .sort((a,b)=>(b.similarity_score||0)-(a.similarity_score||0)).slice(0,topN);
+  return {contextText:formatJobList(jobs),chipLabel:`top ${jobs.length} by score`,chipJobs:jobs};
+}
+
+function ctxRecent(){
+  const jobs=dbIndex.recentJobs.slice(0,30);
+  if(!jobs.length) return {contextText:'No recent jobs in last 14 days.',chipLabel:'recent jobs',chipJobs:[]};
+  const byCompany={};jobs.forEach(j=>{const co=j.company||'?';byCompany[co]=(byCompany[co]||0)+1;});
+  const coSum=Object.entries(byCompany).sort((a,b)=>b[1]-a[1]).map(([co,n])=>`${co}: ${n}`).join(', ');
+  return {contextText:`RECENT JOBS (14d) — ${jobs.length} total:\nBy company: ${coSum}\n\n${formatJobList(jobs.slice(0,20))}`,chipLabel:`${jobs.length} recent jobs`,chipJobs:jobs.slice(0,20)};
+}
+
+function ctxSingleJobDetail(jobRef){
+  let job=null;
+  if(jobRef&&!isNaN(jobRef)) job=lastJobs[parseInt(jobRef)-1]||null;
+  if(!job&&jobRef) job=allJobs.find(j=>j.title&&j.title.toLowerCase().includes(String(jobRef).toLowerCase()));
+  if(!job) return ctxTopMatches();
+  const qual=job.minimum_qualifications||job.required_qualifications||job.basic_qualifications||job.qualifications||'';
+  const desc=job.about_the_job||job.job_description||job.description||job.overview||job.summary||'';
+  const resp=job.responsibilities||job.role||'';
+  let loc=job.locations||'';
+  if(typeof loc==='string'&&loc.startsWith('{')){ try{loc=JSON.parse(loc).city||loc;}catch(e){} }
+  if(Array.isArray(loc)) loc=loc.join(', ');
+  return {
+    contextText:`FULL JOB:\nTitle: ${job.title||'?'} @ ${job.company||'?'}\nLocation: ${loc||'N/A'}\nScore: ${job.similarity_score}/10\nMatch: ${job.match_reason||'N/A'}\nSkills: ${(job.matching_skills||[]).join(', ')||'N/A'}\nGaps: ${dbIndex.gapMap[job.match_gaps||'']||job.match_gaps||'None'}\nURL: ${job.apply_url||'N/A'}\n\n${desc?'ABOUT:\n'+desc.slice(0,600)+'\n\n':''}${resp?'RESPONSIBILITIES:\n'+resp.slice(0,500)+'\n\n':''}${qual?'QUALIFICATIONS:\n'+qual.slice(0,500):''}`,
+    chipLabel:`detail: ${job.title||'?'}`,chipJobs:[job]
+  };
+}
+
+function ctxRoleAnalysis(){
+  const breakdown=Object.entries(dbIndex.roleFreq).sort((a,b)=>b[1]-a[1]).map(([r,n])=>{
+    const rj=allJobs.filter(j=>(dbIndex.titleMap[j.title||'']||categoriseFallback(j.title))===r);
+    const avg=+(rj.reduce((a,j)=>a+(j.similarity_score||0),0)/rj.length).toFixed(1);
+    const best=rj.sort((a,b)=>(b.similarity_score||0)-(a.similarity_score||0))[0];
+    const byco={};rj.forEach(j=>{const co=j.company||'?';byco[co]=(byco[co]||0)+1;});
+    const topco=Object.entries(byco).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([co,n])=>`${co}(${n})`).join(', ');
+    return `  ${r}: ${n} jobs | avg ${avg}/10 | ${topco} | best: "${best?.title||'?'}" ${best?.similarity_score||0}/10`;
+  }).join('\n');
+  return {contextText:`ROLE BREAKDOWN:\n${breakdown}`,chipLabel:'role analysis',chipJobs:[]};
+}
+
+function ctxSaved(){
+  const jobs=allJobs.filter(j=>tracker.saved[j.apply_url]).sort((a,b)=>(b.similarity_score||0)-(a.similarity_score||0));
+  return {contextText:formatJobList(jobs),chipLabel:`${jobs.length} saved jobs`,chipJobs:jobs};
+}
+function ctxApplied(){
+  const jobs=allJobs.filter(j=>tracker.applied[j.apply_url]).sort((a,b)=>(b.similarity_score||0)-(a.similarity_score||0));
+  return {contextText:formatJobList(jobs),chipLabel:`${jobs.length} applied jobs`,chipJobs:jobs};
+}
+
+async function buildContext(question){
+  const intent=await classifyWithGPT(question);
+  switch(intent.type){
+    case 'AGGREGATE':            return ctxAggregate();
+    case 'MARKET_OVERVIEW':     return ctxMarketOverview(intent.companies,intent.recency,intent.role_filter||null);
+    case 'COMPANY_DEEP_DIVE':   return ctxCompanyDeepDive(intent.companies,intent.recency,intent.role_filter||null);
+    case 'COMPANY_REQUIREMENTS': return ctxCompanyRequirements(intent.companies);
+    case 'COMPARE_COMPANIES':    return ctxCompareCompanies(intent.companies);
+    case 'GAP_ANALYSIS':         return ctxGapAnalysis();
+    case 'SKILL_ANALYSIS':       return ctxSkillAnalysis();
+    case 'SKILL_IMPACT':         return ctxSkillImpact();
+    case 'TOP_MATCHES':          return ctxTopMatches();
+    case 'RECENT':               return ctxRecent();
+    case 'SINGLE_JOB_DETAIL':    return ctxSingleJobDetail(intent.job_ref);
+    case 'ROLE_ANALYSIS':        return ctxRoleAnalysis();
+    case 'SAVED':                return ctxSaved();
+    case 'APPLIED':              return ctxApplied();
+    default:                     return ctxTopMatches();
+  }
+}
+
+function formatJobList(jobs){
+  const su=new Set(Object.keys(tracker.saved)),au=new Set(Object.keys(tracker.applied));
+  return jobs.map((j,i)=>{
+    const flags=[su.has(j.apply_url)?'SAVED':'',au.has(j.apply_url)?'APPLIED':''].filter(Boolean).join(',');
+    let loc=j.locations||'';
+    if(typeof loc==='string'&&loc.startsWith('{')){ try{loc=JSON.parse(loc).city||loc;}catch(e){} }
+    if(Array.isArray(loc)) loc=loc.slice(0,2).join(', ');
+    const cg=dbIndex.gapMap?.[j.match_gaps||'']||j.match_gaps||'None';
+    return `[${i+1}] ${j.title||'?'} @ ${j.company||'?'}${flags?' ['+flags+']':''}${daysSince(j.fetched_date)<=14?' [NEW]':''}\n    Score: ${j.similarity_score}/10 | ${loc||'N/A'}\n    Match: ${(j.match_reason||'N/A').slice(0,90)}\n    Gaps: ${cg}`;
+  }).join('\n\n');
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// STREAMING ANSWER CALL
+// ═══════════════════════════════════════════════════════════════════════
+async function callGPTStream(question,contextText,onChunk){
+  const key=document.getElementById('apiKey').value.trim();
+  if(!key) throw new Error('No API key');
+  const systemMsg=
+    `You are a precise, direct Persona Insight Coach — a job search advisor with full intelligence on the candidate's matched job database.\n`+
+    `RULES:\n`+
+    `- Context is computed directly from the database — treat as absolute ground truth\n`+
+    `- NEVER contradict or invent numbers — all counts are in context\n`+
+    `- Be specific: name companies, titles, roles\n`+
+    `- IMPORTANT: only mention the candidate's personal fit, scores, or gaps if they explicitly asked about themselves\n`+
+    `- For general market questions (what is X hiring for, what roles exist), answer objectively without personalising\n`+
+    `- For follow-ups, refer back to previous discussion\n\n`+
+    `CANDIDATE PROFILE:\n${CANDIDATE_PROFILE}`;
+  const userMsg=`CONTEXT (ground truth):\n${contextText}\n\nQUESTION: ${question}`;
+  const resp=await fetch('https://api.openai.com/v1/chat/completions',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+    body:JSON.stringify({
+      model:'gpt-4o-mini',
+      messages:[{role:'system',content:systemMsg},...history,{role:'user',content:userMsg}],
+      max_tokens:1000,temperature:0.3,stream:true
+    })
+  });
+  if(!resp.ok){const e=await resp.json().catch(()=>({error:{message:resp.statusText}}));throw new Error(e.error?.message||'OpenAI '+resp.status);}
+  const reader=resp.body.getReader(),decoder=new TextDecoder();
+  let full='';
+  while(true){
+    const{done,value}=await reader.read();if(done) break;
+    const chunk=decoder.decode(value);
+    for(const line of chunk.split('\n').filter(l=>l.startsWith('data: '))){
+      const data=line.slice(6);if(data==='[DONE]') break;
+      try{const delta=JSON.parse(data).choices?.[0]?.delta?.content||'';if(delta){full+=delta;onChunk(delta);}}catch(e){}
+    }
+  }
+  return full;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// SEND MESSAGE
+// ═══════════════════════════════════════════════════════════════════════
+async function sendMessage(){
+  const input=document.getElementById('chatInput');
+  const q=input.value.trim();
+  if(!q||isLoading) return;
+  if(!allJobs.length){addSystemMsg('Load your jobs_db.json first.');return;}
+  input.value='';autoResize(input);hideEmpty();
+  isLoading=true;document.getElementById('sendBtn').disabled=true;
+  appendMsg('user',q);
+  document.getElementById('ctxHint').textContent='classifying…';
+  const typingId=appendTyping();
+  try{
+    const{contextText,chipLabel,chipJobs}=await buildContext(q);
+    lastJobs=chipJobs;
+    document.getElementById('ctxHint').textContent=chipLabel;
+    removeTyping(typingId);
+    const{bubbleEl}=appendStreamingBubble(chipLabel,chipJobs);
+    let full='';
+    await callGPTStream(q,contextText,chunk=>{
+      full+=chunk;bubbleEl.innerHTML=formatText(full);
+      document.getElementById('messages').scrollTop=document.getElementById('messages').scrollHeight;
+    });
+    lastAnswer=full;
+    history.push({role:'user',content:q});history.push({role:'assistant',content:full});
+    if(history.length>16) history=history.slice(-16);
+  }catch(err){removeTyping(typingId);appendMsg('ai','Error: '+err.message,'','');}
+  isLoading=false;document.getElementById('sendBtn').disabled=false;input.focus();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// UI HELPERS
+// ═══════════════════════════════════════════════════════════════════════
+function updateStatsBar(){
+  const high=allJobs.filter(j=>j.similarity_score>=7).length;
+  const saved=Object.keys(tracker.saved).length,applied=Object.keys(tracker.applied).length;
+  const cos=Object.keys(dbIndex.byCompany||{}).length;
+  document.getElementById('st-total').textContent=allJobs.length.toLocaleString();
+  document.getElementById('st-high').textContent=high;
+  document.getElementById('st-saved').textContent=saved;
+  document.getElementById('st-applied').textContent=applied;
+  document.getElementById('st-companies').textContent=cos;
+}
+
+function appendStreamingBubble(chipLabel,chipJobs){
+  const msgs=document.getElementById('messages'),div=document.createElement('div');
+  div.className='msg ai';
+  const time=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+  const id='ctx-'+Date.now();
+  const ctxHtml=`<div class="ctx-chip" onclick="toggleCtx('${id}')">⟨ ${esc(chipLabel)} ▾</div>`+
+    `<div class="ctx-drawer" id="${id}">`+
+    (chipJobs&&chipJobs.length
+      ?chipJobs.map(j=>`<div class="ctx-job"><span class="ctx-job-score">${j.similarity_score}/10</span> <span class="ctx-job-title">${esc(j.title||'?')}</span> <span style="color:var(--muted2)">@ ${esc(j.company||'?')}</span></div>`).join('')
+      :`<div style="color:var(--muted2);font-size:.56rem;padding:4px">Full DB stats — no individual job list</div>`
+    )+'</div>';
+  const bubble=document.createElement('div');bubble.className='msg-bubble';
+  div.innerHTML=`<div class="msg-avatar">✦</div><div class="msg-body" id="sb-${id}"></div>`;
+  const body=div.querySelector(`#sb-${id}`);
+  body.innerHTML=ctxHtml;body.appendChild(bubble);
+  body.insertAdjacentHTML('beforeend',`<div class="msg-meta">${time}</div>`);
+  msgs.appendChild(div);msgs.scrollTop=msgs.scrollHeight;
+  return{bubbleEl:bubble};
+}
+
+function appendMsg(role,text,chipLabel,chipJobs){
+  const msgs=document.getElementById('messages'),div=document.createElement('div');
+  div.className=`msg ${role}`;
+  const time=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+  let ctxHtml='';
+  if(role==='ai'&&chipLabel){
+    const id='ctx-'+Date.now();
+    ctxHtml=`<div class="ctx-chip" onclick="toggleCtx('${id}')">⟨ ${esc(chipLabel)} ▾</div>`+
+      `<div class="ctx-drawer" id="${id}">`+
+      (chipJobs&&chipJobs.length
+        ?chipJobs.map(j=>`<div class="ctx-job"><span class="ctx-job-score">${j.similarity_score}/10</span> <span class="ctx-job-title">${esc(j.title||'?')}</span> <span style="color:var(--muted2)">@ ${esc(j.company||'?')}</span></div>`).join('')
+        :`<div style="color:var(--muted2);font-size:.56rem;padding:4px">Full DB stats used</div>`
+      )+'</div>';
+  }
+  div.innerHTML=`<div class="msg-avatar">${role==='user'?'KM':'✦'}</div>`+
+    `<div class="msg-body">${ctxHtml}<div class="msg-bubble">${formatText(text||'')}</div><div class="msg-meta">${time}</div></div>`;
+  msgs.appendChild(div);msgs.scrollTop=msgs.scrollHeight;
+}
+
+function appendTyping(){
+  const msgs=document.getElementById('messages'),div=document.createElement('div');
+  div.className='msg ai';const id='t-'+Date.now();div.id=id;
+  div.innerHTML=`<div class="msg-avatar">✦</div><div class="msg-body"><div class="msg-bubble"><div class="typing"><span></span><span></span><span></span></div></div></div>`;
+  msgs.appendChild(div);msgs.scrollTop=msgs.scrollHeight;return id;
+}
+function removeTyping(id){document.getElementById(id)?.remove();}
+function addSystemMsg(text){
+  const msgs=document.getElementById('messages'),div=document.createElement('div');
+  div.style.cssText='text-align:center;font-size:.56rem;color:var(--muted2);padding:6px 0;';
+  div.textContent=text;msgs.appendChild(div);msgs.scrollTop=msgs.scrollHeight;
+}
+function toggleCtx(id){document.getElementById(id)?.classList.toggle('open');}
+function hideEmpty(){document.getElementById('emptyState')?.remove();}
+
+function formatText(text){
+  let t=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  t=t.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  t=t.replace(/\*(.+?)\*/g,'<em>$1</em>');
+  t=t.replace(/`([^`]+)`/g,'<code>$1</code>');
+  t=t.replace(/^###\s+(.+)$/gm,'<strong style="color:var(--accent2);display:block;margin:.4em 0 .2em">$1</strong>');
+  t=t.replace(/^##\s+(.+)$/gm,'<strong style="color:var(--accent);display:block;margin:.5em 0 .2em">$1</strong>');
+  t=t.replace(/^[-•]\s+(.+)$/gm,'<li>$1</li>');
+  t=t.replace(/^\d+\.\s+(.+)$/gm,'<li>$1</li>');
+  t=t.split(/\n\n+/).map(p=>{p=p.trim();if(!p) return '';if(p.startsWith('<')) return p;return `<p>${p.replace(/\n/g,'<br>')}</p>`;}).join('');
+  return t;
+}
+function esc(s=''){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function handleKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}}
+function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,120)+'px';}
+function sendSuggestion(btn){document.getElementById('chatInput').value=btn.textContent;sendMessage();}
+function clearHistory(){history=[];lastJobs=[];lastAnswer='';document.getElementById('messages').innerHTML='';addSystemMsg('Conversation cleared.');}
+document.getElementById('chatInput').addEventListener('input',()=>{
+  document.getElementById('sendBtn').disabled=!allJobs.length||!document.getElementById('chatInput').value.trim();
+});
+</script>
+</body>
+</html>
