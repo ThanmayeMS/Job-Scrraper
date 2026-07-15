@@ -32,4 +32,4 @@ RUN pip install --no-cache-dir /wheels/*.whl && pip install --no-cache-dir .
 
 EXPOSE 8000
 # Auto-apply migrations, then serve on $PORT (managed hosts inject PORT; default 8000).
-CMD ["sh", "-c", "alembic upgrade head && uvicorn jobradar.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "scripts/render-start.sh"]
