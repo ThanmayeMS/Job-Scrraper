@@ -13,5 +13,5 @@ def configure_logging(level: str = "INFO") -> None:
     root.handlers[:] = [handler]
     root.setLevel(level)
     # Quiet noisy third-party loggers.
-    for noisy in ("httpx", "urllib3", "selenium", "openai"):
+    for noisy in ("httpx", "urllib3", "selenium", "openai", "pdfminer", "pdfplumber"):
         logging.getLogger(noisy).setLevel(logging.WARNING)

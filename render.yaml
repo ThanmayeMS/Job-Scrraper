@@ -18,6 +18,8 @@ services:
         generateValue: true
       - key: ENVIRONMENT
         value: production
+      - key: DEBUG
+        value: "false"
       - key: RUN_TASKS_INLINE
         value: "true"
       - key: CORS_ORIGINS
